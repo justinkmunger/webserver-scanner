@@ -354,8 +354,8 @@ const defaultConfig = {
 
     FMLIST_OM_ID: '',                    	// To use the logbook function, please enter your OM ID here, for example: FMLIST_OM_ID: '1234' - this is only necessary if no OMID is entered under FMLIST INTEGRATION on the web server
     FMLIST_Autolog: 'off',               	// Setting the FMLIST autolog function. Set it to 'off' to deactivate the function, “on” to log everything and 'auto' if you only want to log in scanning mode (autoscan or background scan)
-    FMLIST_MinDistance: 200,             	// set the minimum distance in km for an FMLIST log entry here (default: 200, minimum 200)
-    FMLIST_MaxDistance: 2000,            	// set the maximum distance in km for an FMLIST log entry here (default: 2000, minimum 200)
+    FMLIST_MinDistance: 0,             		// set the minimum distance in km for an FMLIST log entry here (default: 200, minimum 200)
+    FMLIST_MaxDistance: 0,            		// set the maximum distance in km for an FMLIST log entry here (default: 2000, minimum 200)
     FMLIST_LogInterval: 60,            		// Specify here in minutes when a log entry can be sent again (default: 60, minimum 60)
     FMLIST_CanLogServer: '',             	// Activates a central server to manage log repetitions (e.g. '127.0.0.1:2000', default is '')   
 	FMLIST_ShortServerName: '',		     	// set short servername (max. 10 characters) e.g. 'DXserver01', default is '' 
@@ -2102,7 +2102,7 @@ async function AutoScan() {
                         if (ScannerMode === 'whitelist' && EnableWhitelist) {
                             step = 0.01;
                         } else {
-                            step = 0.1;
+                            step = 0.2;
                         }
                     }
 
@@ -2285,7 +2285,7 @@ async function startScan(direction) {
 				if (Scan === 'on' && ScannerMode === 'whitelist' && EnableWhitelist) {		
 					currentFrequency += 0.01; 
 				} else {
-					currentFrequency += 0.1; 
+					currentFrequency += 0.2; 
 				}
             }
             if (currentFrequency > upperLimit) {
@@ -2312,7 +2312,7 @@ async function startScan(direction) {
 				if (Scan === 'on' && ScannerMode === 'whitelist' && EnableWhitelist) {		
 					currentFrequency -= 0.01; 
 				} else {
-					currentFrequency -= 0.1; 
+					currentFrequency -= 0.2; 
 				}
             }
 
@@ -2329,11 +2329,11 @@ async function startScan(direction) {
                 while (isInBlacklist(currentFrequency, blacklist)) { 
                     if (direction === 'up') {
                         if (currentFrequency < 74.00) currentFrequency += 0.01;
-                        else currentFrequency += 0.1;
+                        else currentFrequency += 0.2;
                         if (currentFrequency > upperLimit) currentFrequency = lowerLimit;
                     } else if (direction === 'down') {
                         if (currentFrequency < 74.00) currentFrequency -= 0.01;
-                        else currentFrequency -= 0.1;
+                        else currentFrequency -= 0.2;
                         if (currentFrequency < lowerLimit) currentFrequency = upperLimit;
                     }
                     currentFrequency = Math.round(currentFrequency * 100) / 100; 
@@ -2377,7 +2377,7 @@ async function startScan(direction) {
                 while (!validFrequencies.includes(currentFrequency) || (Number(parseFloat(currentFrequency).toFixed(1)) === Number((upperLimit + 0.1).toFixed(1)))) {
                     if (direction === 'up') {
                         if (currentFrequency < 74.00) currentFrequency += 0.01;
-                        else currentFrequency += 0.1;					
+                        else currentFrequency += 0.2;					
                         
                         if (currentFrequency > upperLimit) {
                             const exitCycle = await handleBandEnd();
@@ -2385,7 +2385,7 @@ async function startScan(direction) {
                         }
                     } else if (direction === 'down') {
                         if (currentFrequency < 74.00) currentFrequency -= 0.01;
-                        else currentFrequency -= 0.1;
+                        else currentFrequency -= 0.2;
                         if (currentFrequency < lowerLimit) currentFrequency = upperLimit;
                     }
 
@@ -3512,8 +3512,8 @@ async function writeLogFMLIST({
     let parsedMax = parseFloat(FMLIST_MaxDistance);
 
     // Fallback default values
-    if (isNaN(parsedMin) || parsedMin < 200) parsedMin = 200;
-    if (isNaN(parsedMax) || parsedMax < 200) parsedMax = 2000;
+    if (isNaN(parsedMin)) parsedMin = 0;
+    if (isNaN(parsedMax)) parsedMax = 0;
 
     // Strict numerical check to prevent string/NaN bypass bugs
     if (isNaN(parsedDistance) || parsedDistance < parsedMin || parsedDistance > parsedMax) {
