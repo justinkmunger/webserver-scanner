@@ -181,6 +181,7 @@ const activeChallenges = new Map();     // Store challenges per client
 // -------------------------------------------------------------
 let Scanmode, Autoscan_PE5PVB_Mode, Search_PE5PVB_Mode, StartAutoScan, AntennaSwitch, OnlyScanHoldTime;
 let UnattendedScanSkipRDSDelay = false;
+let AutoScanSkipRDSDelay = false;
 let defaultSensitivityValue, SensitivityCalibrationFrequenz, defaultScanHoldTime, defaultScannerMode, scanIntervalTime, scanBandwith;
 let EnableBlacklist, EnableWhitelist, tuningLowerLimit, tuningUpperLimit;
 let EnableSpectrumScan, EnableDifferenceScan, SpectrumChangeValue, SpectrumLimiterValue, SpectrumPlusMinusValue;
@@ -316,6 +317,7 @@ fs.watch(pluginsConfigDir, (eventType, filename) => {
 // Configuration Default Values
 // -------------------------------------------------------------
 const defaultConfig = {
+    AutoScanSkipRDSDelay: false, // Skip the extra RDS hold during software autoscan regardless of user count
     UnattendedScanSkipRDSDelay: false, // Skip the extra RDS hold during software autoscan with zero users
     Scanmode: 1,                         	// 0 - offline mode or 1 - online mode
     Autoscan_PE5PVB_Mode: false,        	// Set to 'true' if ESP32 with PE5PVB firmware is being used and you want to use the auto scan mode of the firmware. Set it 'true' for FMDX Scanner Mode!
@@ -471,6 +473,7 @@ function applyScannerConfig(configData) {
     AntennaSwitch = configData.AntennaSwitch;
     OnlyScanHoldTime = configData.OnlyScanHoldTime;
     UnattendedScanSkipRDSDelay = configData.UnattendedScanSkipRDSDelay === true;
+    AutoScanSkipRDSDelay = configData.AutoScanSkipRDSDelay === true;
 
     defaultSensitivityValue = configData.defaultSensitivityValue;
     SensitivityCalibrationFrequenz = configData.SensitivityCalibrationFrequenz;
@@ -2051,6 +2054,8 @@ async function SensitivityValueCalibration() {
 
 
 async function AutoScan() {
+    // An earlier up/down search must not leave autoscan classified as a manual search.
+    if (AutoScanSkipRDSDelay) isSearching = false;
     if (!isScanning) {
         // Bandwidth handling when starting auto-scan
         if (scanBandwith === '0' || scanBandwith === 0) {
@@ -2543,8 +2548,9 @@ function checkStereo(stereo_detect, freq, strength, picode, station, checkStreng
         if (strength > Sensitivity || picode.length > 1 || strength > Sensitivity && !isSearching &&  (ScannerMode === 'spectrum' && Scan === 'on' || ScannerMode === 'spectrumBL' && Scan === 'on' || ScannerMode === 'spectrumWL' && Scan === 'on' || ScannerMode === 'difference' || ScannerMode === 'differenceBL' && Scan === 'on' || ScannerMode === 'differenceWL' && Scan === 'on' )) {					
 
             if (picode.length > 1 && ScannerMode !== 'spectrum' && ScannerMode !== 'spectrumBL' && ScannerMode !== 'spectrumWL' && ScannerMode !== 'difference' && ScannerMode !== 'differenceBL' && ScannerMode !== 'differenceWL') {
-                const skipRDSDelay = UnattendedScanSkipRDSDelay &&
-                    Scan === 'on' && !isSearching && Number(users) === 0;
+                const skipRDSDelay = Scan === 'on' && !isSearching &&
+                    (AutoScanSkipRDSDelay ||
+                        (UnattendedScanSkipRDSDelay && Number(users) === 0));
                 if (!skipRDSDelay) ScanHoldTimeValue += 50;
             }				
             

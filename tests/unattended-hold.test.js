@@ -18,7 +18,7 @@ function advances({enabled = false, users = 0, pi = '1234', count = 21,
     searching = false, mode = 'normal'} = {}) {
     let steps = 0;
     const context = {
-        UnattendedScanSkipRDSDelay: enabled,
+        UnattendedScanSkipRDSDelay: enabled, AutoScanSkipRDSDelay: false,
         ScanHoldTime: 2, Sensitivity: 20, ScannerMode: mode,
         isSearching: searching, Scan: 'on', users,
         sigArraySpectrum: [], sigArrayDifference: [],
