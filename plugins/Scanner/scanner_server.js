@@ -180,6 +180,7 @@ const activeChallenges = new Map();     // Store challenges per client
 // Global Variables mapped from Config
 // -------------------------------------------------------------
 let Scanmode, Autoscan_PE5PVB_Mode, Search_PE5PVB_Mode, StartAutoScan, AntennaSwitch, OnlyScanHoldTime;
+let UnattendedScanSkipRDSDelay = false;
 let defaultSensitivityValue, SensitivityCalibrationFrequenz, defaultScanHoldTime, defaultScannerMode, scanIntervalTime, scanBandwith;
 let EnableBlacklist, EnableWhitelist, tuningLowerLimit, tuningUpperLimit;
 let EnableSpectrumScan, EnableDifferenceScan, SpectrumChangeValue, SpectrumLimiterValue, SpectrumPlusMinusValue;
@@ -315,6 +316,7 @@ fs.watch(pluginsConfigDir, (eventType, filename) => {
 // Configuration Default Values
 // -------------------------------------------------------------
 const defaultConfig = {
+    UnattendedScanSkipRDSDelay: false, // Skip the extra RDS hold during software autoscan with zero users
     Scanmode: 1,                         	// 0 - offline mode or 1 - online mode
     Autoscan_PE5PVB_Mode: false,        	// Set to 'true' if ESP32 with PE5PVB firmware is being used and you want to use the auto scan mode of the firmware. Set it 'true' for FMDX Scanner Mode!
     Search_PE5PVB_Mode: false,           	// Set to "true" if ESP32 with PE5PVB firmware is being used and you want to use the search mode of the firmware.
@@ -468,6 +470,7 @@ function applyScannerConfig(configData) {
     StartScanByMUF_Region = configData.StartScanByMUF_Region;  // NEW
     AntennaSwitch = configData.AntennaSwitch;
     OnlyScanHoldTime = configData.OnlyScanHoldTime;
+    UnattendedScanSkipRDSDelay = configData.UnattendedScanSkipRDSDelay === true;
 
     defaultSensitivityValue = configData.defaultSensitivityValue;
     SensitivityCalibrationFrequenz = configData.SensitivityCalibrationFrequenz;
@@ -2540,7 +2543,9 @@ function checkStereo(stereo_detect, freq, strength, picode, station, checkStreng
         if (strength > Sensitivity || picode.length > 1 || strength > Sensitivity && !isSearching &&  (ScannerMode === 'spectrum' && Scan === 'on' || ScannerMode === 'spectrumBL' && Scan === 'on' || ScannerMode === 'spectrumWL' && Scan === 'on' || ScannerMode === 'difference' || ScannerMode === 'differenceBL' && Scan === 'on' || ScannerMode === 'differenceWL' && Scan === 'on' )) {					
 
             if (picode.length > 1 && ScannerMode !== 'spectrum' && ScannerMode !== 'spectrumBL' && ScannerMode !== 'spectrumWL' && ScannerMode !== 'difference' && ScannerMode !== 'differenceBL' && ScannerMode !== 'differenceWL') {
-                ScanHoldTimeValue += 50;
+                const skipRDSDelay = UnattendedScanSkipRDSDelay &&
+                    Scan === 'on' && !isSearching && Number(users) === 0;
+                if (!skipRDSDelay) ScanHoldTimeValue += 50;
             }				
             
             let tuningLowerLimitwith00 = Math.round(tuningLowerLimit * 100) / 100;
