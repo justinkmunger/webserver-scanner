@@ -21,6 +21,7 @@ const { execSync } = require('child_process');
 const { logInfo, logError, logWarn } = require('./../../server/console');
 const apiData = require('./../../server/datahandler');
 const config = require('./../../config.json');
+const htmlLogIO = require('./html-log-io').createLogIO(logError);
 
 // -------------------------------------------------------------
 // Global System & Operational Variables
@@ -3065,29 +3066,7 @@ function getLogFilePathHTML(date, time, isFiltered) {
     // Create the full path to the file
     const filePath = path.join(logDir, fileName);
 
-    // Check if the directory exists, if not, create it
-    if (!fs.existsSync(logDir)) {
-        fs.mkdirSync(logDir, { recursive: true });
-    }
-
-    // Check if the file exists; if not, create it
-    if (!fs.existsSync(filePath)) {
-        let header = '';
-
-        try {
-            // Read the contents of the FilteredTemplate.html file
-            const templateFilePath = path.join(__dirname, 'FilteredTemplate.html');
-            if (fs.existsSync(templateFilePath)) {
-                const templateContent = fs.readFileSync(templateFilePath, 'utf8');
-                header += templateContent;
-            } else {
-                logError('FilteredTemplate.html does not exist');
-                // Handle the case where the template file is missing
-            }
-        } catch (error) {
-            logError('Failed to read FilteredTemplate.html:', error.message);
-        }
-
+    let header = '';
         header += `${ServerName}<br>${ServerDescription}<br>`;
         
 		if (HTMLOnlyFirstLog) {
@@ -3108,14 +3087,8 @@ function getLogFilePathHTML(date, time, isFiltered) {
             ? `<table border="1"><tr><th>DATE</th><th>TIME(UTC)</th><th>FREQ</th><th>PI</th><th>PS</th><th>NAME</th><th>CITY</th><th>ITU</th><th>ANT</th><th>P</th><th>ERP(kW)</th><th>STRENGTH(${SignalStrengthUnit})</th><th>DIST(km)</th><th>AZ(°)</th><th>ID</th><th>MODE</th><th>AI RDS</th><th>AI PI</th><th>AI PS</th><th>COMMENT</th><th>STREAM</th><th>MAP</th><th>FMLIST</th></tr>\n` 
             : `<table border="1"><tr><th>DATE</th><th>TIME</th><th>FREQ</th><th>PI</th><th>PS</th><th>NAME</th><th>CITY</th><th>ITU</th><th>ANT</th><th>P</th><th>ERP(kW)</th><th>STRENGTH(${SignalStrengthUnit})</th><th>DIST(km)</th><th>AZ(°)</th><th>ID</th><th>MODE</th><th>AI RDS</th><th>AI PI</th><th>AI PS</th><th>COMMENT</th><th>STREAM</th><th>MAP</th><th>FMLIST</th></tr>\n`;			
 
-        try {
-            fs.writeFileSync(filePath, header, { flag: 'w' });
-            logInfo('Scanner created /logs/' + fileName);
-        } catch (error) {
-            logError('Failed to create /logs/' + fileName, ':', error.message);
-        }
-    }
-
+    htmlLogIO.enqueue({type:'ensure', file:filePath, header,
+        template:path.join(__dirname, 'FilteredTemplate.html')});
     return filePath;
 }
 
@@ -3300,38 +3273,10 @@ function writeHTMLLogEntry(isFiltered) {
 	}
 
     let line = `<tr><td>${date}</td><td>${time}</td><td>${freq}</td><td>${escapeHtml(logPi)}</td><td>${escapeHtml(psWithUnderscores)}</td><td>${escapeHtml(station)}</td><td>${escapeHtml(city)}</td><td>${escapeHtml(itu)}</td><td>${escapeHtml(antennaName)}</td><td>${escapeHtml(pol)}</td><td>${escapeHtml(erp)}</td><td>${SNR}</td><td>${escapeHtml(distance)}</td><td>${escapeHtml(azimuth)}</td><td>${escapeHtml(stationid)}</td><td>${scanmode}</td><td>${rdsAiCol}</td><td>${escapeHtml(piAiCol)}</td><td>${escapeHtml(psAiWithUnderscores)}</td><td contenteditable="true"></td><td>${link1}</td><td>${link2}</td><td>${link3}</td></tr>\n`;
-    let logContent = '';
-    if (fs.existsSync(logFilePathHTML)) {
-        try {
-            logContent = fs.readFileSync(logFilePathHTML, 'utf8');
-        } catch (error) {
-            logError("Failed to read log file:", error.message);
-            return;
-        }
-    }
-
-    if (HTMLOnlyFirstLog) {
-        const entryExists = logContent.includes(`<td>${freq}</td>`) && logContent.includes(`<td>${escapeHtml(picode)}</td>`) && logContent.includes(`<td>${escapeHtml(station)}</td>`);
-        if (entryExists) {
-            return;
-        }
-    }
-
-    // Ensure the log ends correctly for every entry
-    const endTag = '</pre></body></html>';
-    let updatedContent = logContent.replace(new RegExp(`${endTag}$`), '');
-
-    // Add the new line
-    updatedContent += line;
-
-    // Append the end tag after the last entry
-    updatedContent += endTag;
-
-    try {
-        fs.writeFileSync(logFilePathHTML, updatedContent, 'utf8');
-    } catch (error) {
-        logError("Failed to update the log file:", error.message);
-    }
+    htmlLogIO.enqueue({type:'html', file:logFilePathHTML, line,
+        firstOnly:HTMLOnlyFirstLog,
+        tokens:[`<td>${freq}</td>`, `<td>${escapeHtml(picode)}</td>`,
+            `<td>${escapeHtml(station)}</td>`]});
 }
 
 function getCurrentUTC() {
